@@ -1,0 +1,19 @@
+# dependencies and build output
+node_modules/
+.next/
+dist/
+*.tsbuildinfo
+next-env.d.ts
+
+# secrets and local settings (never commit these)
+.env
+.env.local
+.env.*.local
+
+# runtime files
+logs/
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# packaged copy
+*.zip

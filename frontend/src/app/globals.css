@@ -1,0 +1,123 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* ------------------------------------------------------------------
+   Design tokens. Edit these to restyle the whole template.
+   ------------------------------------------------------------------ */
+:root {
+  --bg: #f4f6f8;
+  --surface: #ffffff;
+  --surface-2: #f8fafc;
+  --fg: #0f172a;
+  --muted: #64748b;
+  --line: #e3e8ef;
+
+  --brand: #0f766e;
+  --brand-strong: #115e59;
+  --brand-text: var(--brand);
+
+  --success: #059669;
+  --danger: #dc2626;
+  --warning: #b45309;
+  --info: #2563eb;
+
+  --sidebar: #0b1220;
+  --sidebar-2: #111a2e;
+  --sidebar-fg: #94a3b8;
+  --sidebar-line: rgb(255 255 255 / 0.07);
+
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.04), 0 1px 3px rgb(15 23 42 / 0.06);
+  --shadow-pop: 0 12px 32px -8px rgb(15 23 42 / 0.22), 0 4px 10px -4px rgb(15 23 42 / 0.1);
+}
+
+[data-theme="dark"] {
+  --bg: #090e18;
+  --surface: #101827;
+  --surface-2: #0d1422;
+  --fg: #e6eaf2;
+  --muted: #8b98ad;
+  --line: #1e293b;
+  --brand-text: color-mix(in srgb, var(--brand) 60%, white);
+  --success: #34d399;
+  --danger: #f87171;
+  --warning: #fbbf24;
+  --info: #60a5fa;
+  --sidebar: #070b14;
+  --sidebar-2: #0f1727;
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-pop: 0 16px 40px -8px rgb(0 0 0 / 0.7);
+}
+
+/* Accent colours (Appearance menu). Add a block here and an entry in src/config/site.ts to offer more. */
+[data-accent="indigo"] { --brand: #4f46e5; --brand-strong: #4338ca; }
+[data-accent="blue"]   { --brand: #2563eb; --brand-strong: #1d4ed8; }
+[data-accent="violet"] { --brand: #7c3aed; --brand-strong: #6d28d9; }
+[data-accent="rose"]   { --brand: #e11d48; --brand-strong: #be123c; }
+[data-accent="amber"]  { --brand: #b45309; --brand-strong: #92400e; }
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-brand: var(--brand);
+  --color-brand-strong: var(--brand-strong);
+  --color-brand-text: var(--brand-text);
+  --color-success: var(--success);
+  --color-danger: var(--danger);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-2: var(--sidebar-2);
+  --color-sidebar-fg: var(--sidebar-fg);
+  --color-sidebar-line: var(--sidebar-line);
+  --font-sans: var(--font-sans-loaded), ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+  --font-mono: var(--font-mono-loaded), ui-monospace, "Cascadia Code", monospace;
+  --shadow-card: var(--shadow-card);
+  --shadow-pop: var(--shadow-pop);
+  --animate-fade: fade 0.15s ease-out;
+  --animate-pop: pop 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
+  --animate-shimmer: shimmer 1.4s infinite linear;
+}
+
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pop { from { opacity: 0; transform: translateY(8px) scale(0.98); } to { opacity: 1; transform: none; } }
+@keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+html { color-scheme: light; }
+html[data-theme="dark"] { color-scheme: dark; }
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-feature-settings: "cv11", "ss01";
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Figures line up in columns everywhere money or counts are shown. */
+.num { font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+
+.skeleton {
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--line) 25%, color-mix(in srgb, var(--line) 50%, var(--surface)) 50%, var(--line) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite linear;
+}
+
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--muted) 35%, transparent); border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
+*::-webkit-scrollbar-thumb:hover { background-color: color-mix(in srgb, var(--muted) 60%, transparent); }
+
+:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+/* Reports print as clean statements: chrome is hidden, cards lose their shadow. */
+@media print {
+  .no-print { display: none !important; }
+  body { background: #fff; }
+  main { padding: 0 !important; }
+  .print-plain { box-shadow: none !important; border-color: #ddd !important; }
+}
