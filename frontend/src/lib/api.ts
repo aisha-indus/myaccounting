@@ -5,7 +5,27 @@ export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000
 export const FILES_URL = API_URL.replace(/\/api\/?$/, "");
 
 const TOKEN_KEY = "ibms_token";
-export const getToken = () => (typeof window === "undefined" ? null : localStorage.getItem(TOKEN_KEY));
+
+/** True when the JWT's expiry time has passed (or it cannot be read). */
+function isExpired(token: string) {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+    return typeof payload.exp === "number" && payload.exp * 1000 <= Date.now();
+  } catch {
+    return true;
+  }
+}
+
+/** The saved sign-in token. An expired one is removed so it is never sent to the server. */
+export const getToken = () => {
+  if (typeof window === "undefined") return null;
+  const token = localStorage.getItem(TOKEN_KEY);
+  if (token && isExpired(token)) {
+    localStorage.removeItem(TOKEN_KEY);
+    return null;
+  }
+  return token;
+};
 export const setToken = (token: string | null) => {
   if (token) localStorage.setItem(TOKEN_KEY, token);
   else localStorage.removeItem(TOKEN_KEY);

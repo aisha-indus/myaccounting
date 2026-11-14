@@ -49,6 +49,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     refetchOnWindowFocus: true,
   });
 
+  // A token the server rejects (account deleted, secret changed) is dropped, so the app shows the sign-in page.
+  useEffect(() => {
+    if (me.isError) {
+      setToken(null);
+      setTokenState(null);
+    }
+  }, [me.isError]);
+
   const signIn = useCallback(
     (newToken: string, user: AuthUser) => {
       setToken(newToken);
