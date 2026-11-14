@@ -1,6 +1,7 @@
 import dotenv from "dotenv";
 
-dotenv.config();
+// ENV_FILE lets a script read another file, e.g. .env.cloud for the online database.
+dotenv.config({ path: process.env.ENV_FILE || ".env" });
 
 const num = (v: string | undefined, fallback: number) => (v ? Number(v) : fallback);
 
@@ -13,7 +14,15 @@ export const env = {
     name: process.env.DB_NAME || "ibms",
     user: process.env.DB_USER || "root",
     password: process.env.DB_PASSWORD || "",
+    /** Cloud MySQL (Aiven, TiDB, Railway...) requires an encrypted connection. */
+    ssl: process.env.DB_SSL === "true",
+    /** Optional CA certificate (PEM text) so the server certificate is verified too. */
+    sslCa: (process.env.DB_SSL_CA || "").replace(/\\n/g, "\n").trim(),
   },
+  /** Running as a Vercel function: the disk is read-only except /tmp, and nothing runs between requests. */
+  serverless: !!process.env.VERCEL,
+  /** Writable folder for logs and uploads. */
+  dataDir: process.env.VERCEL ? "/tmp" : process.cwd(),
   jwtSecret: process.env.JWT_SECRET || "",
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || "2h",
   clientUrl: process.env.CLIENT_URL || "http://localhost:3000",
@@ -26,6 +35,10 @@ export const env = {
   },
   seedPassword: process.env.SEED_PASSWORD || "",
 };
+
+/** mysql2 SSL options: encrypted when DB_SSL=true, and the certificate is checked when DB_SSL_CA is set. */
+export const sslOptions = () =>
+  env.db.ssl ? (env.db.sslCa ? { ca: env.db.sslCa, rejectUnauthorized: true } : { rejectUnauthorized: false }) : undefined;
 
 if (!env.jwtSecret) {
   throw new Error("JWT_SECRET is missing. Copy .env.example to .env and set it.");

@@ -21,7 +21,8 @@ async function start() {
   } catch (err) {
     logger.error(`Ledger check failed (run npm run db:setup if tables are missing): ${(err as Error).message}`);
   }
-  startReminders();
+  // A Vercel function only runs while answering a request, so the hourly timer is skipped there.
+  if (!env.serverless) startReminders();
   app.listen(env.port, () => logger.info(`IBMS API listening on http://localhost:${env.port}/api`));
 }
 

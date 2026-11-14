@@ -160,3 +160,34 @@ Starts by itself the first time a user opens the dashboard on a device, and can 
 ## After pulling new code
 
 Run `npm run db:migrate` in `backend` once. It only creates tables that are missing and never touches existing data.
+
+## Deploying online (Vercel + cloud MySQL)
+
+Deploy the two folders as **two Vercel projects** from the same GitHub repo.
+
+### 1. Online database
+Create a MySQL service (for example Aiven, free plan). Then, on your PC:
+
+1. Copy `backend/.env.cloud.example` to `backend/.env.cloud` and fill in the online host, port, user, password and database name.
+2. In `backend` run `npm run db:copy-to-cloud`. It creates all tables online and copies this PC's data (users, accounts, records). It refuses to run if the online database already has users.
+
+### 2. Backend project
+Vercel > Add New > Project > this repo. Root Directory `backend`, preset **Express**. Environment variables:
+
+| Key | Value |
+| --- | --- |
+| `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | from the database provider |
+| `DB_SSL` | `true` |
+| `DB_SSL_CA` | optional: the provider's CA certificate, to also verify the server |
+| `JWT_SECRET` | a long random string (not the one on your PC) |
+| `JWT_EXPIRES_IN` | `2h` |
+| `CLIENT_URL` | the frontend's Vercel address, e.g. `https://myaccounting.vercel.app` |
+| `NODE_ENV` | `production` |
+
+### 3. Frontend project
+Root Directory `frontend`, preset **Next.js**. Set `NEXT_PUBLIC_API_URL` to the backend's Vercel address followed by `/api`, then redeploy.
+
+### What works differently on Vercel
+- Logs and the audit trail go to the Vercel function logs (no files).
+- Uploaded files (profile picture, CNIC, CV, contract) are stored only temporarily. Keep the documents somewhere permanent if they matter.
+- Hourly reminder emails do not run on their own. A super admin can trigger them, or run the backend on a normal server (Railway, Render, a VPS) where everything works as on your PC.

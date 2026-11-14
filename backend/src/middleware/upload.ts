@@ -1,9 +1,11 @@
 import fs from "fs";
 import path from "path";
 import multer from "multer";
+import { env } from "../config/env";
 import { badRequest } from "../utils/http";
 
-export const UPLOAD_DIR = path.resolve(process.cwd(), "uploads");
+// On Vercel only /tmp is writable and it is wiped between runs, so uploads there are temporary.
+export const UPLOAD_DIR = path.resolve(env.dataDir, "uploads");
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 const IMAGE = [".jpg", ".jpeg", ".png", ".webp"];

@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { query } from "../config/db";
+import { env } from "../config/env";
 import { logger } from "../config/logger";
 import { billDueMail, paymentDueMail, sendMail, taskDueMail } from "../utils/mailer";
 
@@ -11,7 +12,7 @@ import { billDueMail, paymentDueMail, sendMail, taskDueMail } from "../utils/mai
  *  - Customer (reminder on, balance owed): from 3 days before the due date until paid.
  *  - Vendor (reminder on, balance owed): the owner user is reminded from 3 days before the due date.
  */
-const STATE_FILE = path.resolve(process.cwd(), "logs/reminders.json");
+const STATE_FILE = path.resolve(env.dataDir, "logs/reminders.json");
 const today = () => new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD in local time
 
 function loadSent(): Set<string> {

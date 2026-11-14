@@ -5,7 +5,8 @@ import winston from "winston";
 // The documentation sheet has no audit table, so the trail is written to logs/audit.log (one JSON line per action).
 const auditLogger = winston.createLogger({
   format: winston.format.combine(winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }), winston.format.json()),
-  transports: [new winston.transports.File({ filename: "logs/audit.log" })],
+  // On Vercel the trail goes to the function logs instead of a file.
+  transports: [process.env.VERCEL ? new winston.transports.Console() : new winston.transports.File({ filename: "logs/audit.log" })],
 });
 
 export function audit(req: Request, action: string, entity: string, id?: number | string, detail?: unknown) {

@@ -9,7 +9,9 @@ export const logger = winston.createLogger({
   format: combine(errors({ stack: true }), timestamp({ format: "YYYY-MM-DD HH:mm:ss" }), line),
   transports: [
     new winston.transports.Console({ format: combine(colorize(), timestamp({ format: "HH:mm:ss" }), line) }),
-    new winston.transports.File({ filename: "logs/error.log", level: "error" }),
-    new winston.transports.File({ filename: "logs/app.log" }),
+    // Vercel has no lasting disk: there, logs only go to the console and show in the Vercel dashboard.
+    ...(process.env.VERCEL
+      ? []
+      : [new winston.transports.File({ filename: "logs/error.log", level: "error" }), new winston.transports.File({ filename: "logs/app.log" })]),
   ],
 });

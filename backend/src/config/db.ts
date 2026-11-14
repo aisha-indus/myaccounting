@@ -1,5 +1,5 @@
 import mysql from "mysql2/promise";
-import { env } from "./env";
+import { env, sslOptions } from "./env";
 
 // dateStrings keeps DATE/DATETIME as plain "YYYY-MM-DD" strings (no timezone shifting),
 // decimalNumbers returns DECIMAL(15,2) columns as JS numbers.
@@ -12,6 +12,7 @@ export const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   dateStrings: true,
+  ssl: sslOptions(),
   decimalNumbers: true,
 });
 

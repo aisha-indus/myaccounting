@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import mysql from "mysql2/promise";
-import { env } from "../config/env";
+import { env, sslOptions } from "../config/env";
 
 /** Creates the database (if missing) and every table from database/schema.sql. Safe to re-run. */
 async function migrate() {
@@ -11,6 +11,7 @@ async function migrate() {
     user: env.db.user,
     password: env.db.password,
     multipleStatements: true,
+    ssl: sslOptions(),
   });
   await conn.query(`CREATE DATABASE IF NOT EXISTS \`${env.db.name}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
   await conn.query(`USE \`${env.db.name}\``);
