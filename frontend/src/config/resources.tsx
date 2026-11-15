@@ -23,6 +23,25 @@ export const CATEGORIES: Record<string, readonly string[]> = {
   IT: ["Data", "Networking", "Support"],
   Operations: ["Logistics", "Procurement", "Administration"],
 };
+/** Skill categories for team members. Add or rename freely; existing saved values stay selectable. */
+export const SKILL_CATEGORIES: Record<string, readonly string[]> = {
+  Development: ["Frontend", "Backend", "Full Stack", "React", "Next.js", "Node.js", "Java", "Python", "PHP / Laravel", "Mobile", "WordPress"],
+  Design: ["UI/UX", "Graphic Design", "Branding", "Video Editing", "Motion Graphics"],
+  Marketing: ["SEO", "Social Media", "Content Writing", "Paid Ads", "Email Marketing"],
+  Database: ["MySQL", "PostgreSQL", "MongoDB", "Database Design"],
+  DevOps: ["CI/CD", "Cloud Hosting", "Docker", "Server Management"],
+  IT: ["Networking", "Hardware Support", "System Administration", "Security"],
+  Finance: ["Bookkeeping", "Payroll", "Tax", "Auditing"],
+  Sales: ["Lead Generation", "Client Handling", "Business Development"],
+  HR: ["Recruitment", "Training", "Employee Relations"],
+  Content: ["Copywriting", "Translation", "Proofreading"],
+};
+/** "What is this for?" choices on vendors. */
+export const VENDOR_PURPOSES = [
+  "Office Supplies", "Software", "Website", "Hosting / Domain", "IT Support", "Web Development", "Advertising", "Marketing", "Rent",
+  "Utilities", "Internet / Phone", "Consulting", "Legal / Professional", "Shipping / Courier", "Machinery / Equipment", "Repairs / Maintenance",
+  "Training", "Travel", "Insurance", "Other",
+] as const;
 export const DEPARTMENTS = ["Marketing", "IT", "HR", "Sales", "Design", "Backend", "Database", "Content", "DevOps", "Finance", "Operations"] as const;
 export const TASK_STATUSES = ["Pending", "In Progress", "Completed", "On Hold"] as const;
 export const MEMBER_TYPES = ["Internee", "Full-time", "Part-time", "Contractor"] as const;
@@ -335,8 +354,15 @@ export const skills: ResourceConfig = {
   ],
   fields: [
     memberField,
-    { name: "main_category", label: "Skill main category", type: "text", required: true },
-    { name: "sub_category", label: "Skill sub category", type: "text" },
+    { name: "main_category", label: "Skill main category", type: "select", options: Object.keys(SKILL_CATEGORIES), required: true },
+    {
+      name: "sub_category",
+      label: "Skill sub category",
+      type: "select",
+      dependsOn: { field: "main_category", map: SKILL_CATEGORIES },
+      splitOnCreate: true,
+      help: "Pick one or more. One skill is saved for each.",
+    },
     { name: "estimated_time_min", label: "Estimated time (minutes)", type: "number" },
     { name: "estimated_cost", label: "Estimated cost", type: "money" },
   ],
@@ -580,7 +606,7 @@ export const vendors: ResourceConfig = {
     { name: "email", label: "Email", type: "email", section: "Contact" },
     { name: "web_address", label: "Web address", type: "url", placeholder: "https://", section: "Contact" },
     { name: "login_url", label: "Log in URL", type: "url", placeholder: "https://", section: "Contact" },
-    { name: "what_is_this_for", label: "What is this for?", type: "text", section: "Contact" },
+    { name: "what_is_this_for", label: "What is this for?", type: "select", options: VENDOR_PURPOSES, section: "Contact" },
     { name: "user_id", label: "User (owner)", type: "relation", relation: userRel, display: "user_name", section: "Billing" },
     { name: "due_date", label: "Due date", type: "date", section: "Billing" },
     { name: "linked_ledger_account_id", label: "Link ledger account", type: "relation", relation: ledgerRel, display: "ledger_account_name", section: "Billing" },

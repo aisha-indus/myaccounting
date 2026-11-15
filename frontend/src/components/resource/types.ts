@@ -42,6 +42,19 @@ export interface Field {
   /** For "file": accepted extensions. */
   accept?: string;
   min?: number;
+  /** Error shown when the value is below `min`. */
+  minMessage?: string;
+  /**
+   * For "select": when creating, several options can be picked at once and one record is saved per
+   * option (e.g. one skill per sub category). When editing, it is a normal single select.
+   */
+  splitOnCreate?: boolean;
+  /** Shown in the form but not sent to the server (e.g. a total used to work out another field). */
+  virtual?: boolean;
+  /** Value worked out from the other fields while typing; the input is read-only. */
+  computed?: (values: Row) => unknown;
+  /** Starting value when editing, for a field that is not a database column. */
+  initial?: (row: Row) => unknown;
 }
 
 export type ColType = "text" | "money" | "number" | "date" | "datetime" | "month" | "time" | "minutes" | "percent" | "bool" | "status" | "chips" | "link" | "progress";

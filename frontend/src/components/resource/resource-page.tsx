@@ -1,11 +1,12 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Eye, LayoutGrid, List, Pencil, Plus, Trash2 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { type Row, useList, useRemove, useSave } from "@/hooks/use-resource";
-import { errorMessage } from "@/lib/api";
+import { api, errorMessage } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/cn";
 import { Button } from "../ui/button";
@@ -35,6 +36,8 @@ export function useResourceDialogs(config: ResourceConfig) {
   const canWrite = !config.readOnly && canEdit(config.key);
   const [dialog, setDialog] = useState<Dialog>(null);
   const [formError, setFormError] = useState("");
+  const [splitSaving, setSplitSaving] = useState(false);
+  const queryClient = useQueryClient();
   const save = useSave(config.key);
   const remove = useRemove(config.key);
 
@@ -54,10 +57,29 @@ export function useResourceDialogs(config: ResourceConfig) {
     [canWrite]
   );
 
-  const submit = (values: Row) => {
+  const submit = async (values: Row) => {
     setFormError("");
+    const payload = toPayload(config.fields, values, config.multipart);
+    // A field marked splitOnCreate with several choices creates one record per choice.
+    const split = dialog?.mode === "create" && !(payload instanceof FormData) ? config.fields.find((f) => f.splitOnCreate && Array.isArray(payload[f.name])) : undefined;
+    if (split && !(payload instanceof FormData)) {
+      const items: string[] = payload[split.name];
+      const bodies = items.length ? items.map((item) => ({ ...payload, [split.name]: item })) : [{ ...payload, [split.name]: null }];
+      setSplitSaving(true);
+      try {
+        for (const body of bodies) await api.post(`/${config.key}`, body);
+        toast.success(bodies.length > 1 ? `${bodies.length} ${config.title.toLowerCase()} created` : `${config.singular} created`);
+        close();
+      } catch (e) {
+        setFormError(errorMessage(e));
+      } finally {
+        setSplitSaving(false);
+        void queryClient.invalidateQueries();
+      }
+      return;
+    }
     save.mutate(
-      { id: dialog?.row?.id, payload: toPayload(config.fields, values, config.multipart) },
+      { id: dialog?.row?.id, payload },
       {
         onSuccess: () => {
           toast.success(`${config.singular} ${dialog?.mode === "edit" ? "updated" : "created"}`);
@@ -88,7 +110,7 @@ export function useResourceDialogs(config: ResourceConfig) {
             defaults={config.defaults?.()}
             cols={size === "xl" ? 3 : 2}
             summary={config.formSummary}
-            submitting={save.isPending}
+            submitting={save.isPending || splitSaving}
             error={formError}
             onSubmit={submit}
             onCancel={close}

@@ -20,8 +20,10 @@ export function buildSchema(fields: Field[], isEdit: boolean) {
   const shape: Record<string, z.ZodType> = {};
   for (const f of fields) {
     const need = `${f.label} is required`;
-    if (NUMERIC.includes(f.type)) {
-      const base = z.number({ error: need }).min(f.min ?? (f.type === "relation" ? 1 : 0), `${f.label} cannot be less than ${f.min ?? 0}`);
+    if (f.splitOnCreate && !isEdit) {
+      shape[f.name] = f.required ? z.array(z.string()).min(1, `Select at least one ${f.label.toLowerCase()}`) : z.array(z.string());
+    } else if (NUMERIC.includes(f.type)) {
+      const base = z.number({ error: need }).min(f.min ?? (f.type === "relation" ? 1 : 0), f.minMessage || `${f.label} cannot be less than ${f.min ?? 0}`);
       shape[f.name] = z.preprocess((v) => (v === "" || v === null || v === undefined ? null : Number(v)), f.required ? base : base.nullable());
     } else if (f.type === "boolean") {
       shape[f.name] = z.boolean();
@@ -48,7 +50,11 @@ export function buildSchema(fields: Field[], isEdit: boolean) {
 export function toFormValues(fields: Field[], row: Row | undefined, defaults: Row = {}): Row {
   const values: Row = {};
   for (const f of fields) {
-    const raw = row ? row[f.name] : defaults[f.name];
+    const raw = row ? (f.initial ? f.initial(row) : row[f.name]) : defaults[f.name];
+    if (f.splitOnCreate && !row) {
+      values[f.name] = raw ? [String(raw)] : [];
+      continue;
+    }
     switch (f.type) {
       case "boolean":
         values[f.name] = !!Number(raw);
@@ -84,7 +90,9 @@ export function toPayload(fields: Field[], values: Row, multipart?: boolean): Ro
   const out: Row = {};
   for (const f of fields) {
     const v = values[f.name];
-    if (f.type === "file") {
+    if (f.virtual) continue;
+    if (Array.isArray(v) && f.splitOnCreate) out[f.name] = v; // split into one record per item by the caller
+    else if (f.type === "file") {
       const file = v instanceof FileList ? v[0] : undefined;
       if (file) out[f.name] = file;
     } else if (f.type === "multicheck") out[f.name] = (v as string[]).join(",");
@@ -126,6 +134,7 @@ export function ResourceForm({ fields: allFields, row, defaults, cols = 2, submi
     register,
     control,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<Row>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -161,6 +170,10 @@ export function ResourceForm({ fields: allFields, row, defaults, cols = 2, submi
   const input = (f: Field) => {
     const invalid = !!errors[f.name];
     const common = { "aria-invalid": invalid, placeholder: f.placeholder };
+    if (f.splitOnCreate && !isEdit) return <MultiChoice field={f} control={control} />;
+    if (f.computed) {
+      return <Input type="number" readOnly tabIndex={-1} className="num cursor-default bg-surface-2 font-semibold" {...common} {...register(f.name)} />;
+    }
     switch (f.type) {
       case "textarea":
         return <Textarea {...common} {...register(f.name)} />;
@@ -242,10 +255,11 @@ export function ResourceForm({ fields: allFields, row, defaults, cols = 2, submi
             )}
             <div className={grid}>
               {section.fields.map((f) => {
-                const wide = f.wide || f.type === "textarea" || f.type === "multicheck";
+                const chips = f.type === "multicheck" || (!!f.splitOnCreate && !isEdit);
+                const wide = f.wide || f.type === "textarea" || chips;
                 const message = errors[f.name]?.message as string | undefined;
                 // Switches and chip groups contain buttons, so they must not sit inside a <label>.
-                if (f.type === "boolean" || f.type === "multicheck") {
+                if (f.type === "boolean" || chips) {
                   return (
                     <div key={f.name} className={cn(wide && "col-span-full")}>
                       <span className="mb-1.5 flex items-center gap-1 text-[13px] font-semibold">
@@ -267,6 +281,7 @@ export function ResourceForm({ fields: allFields, row, defaults, cols = 2, submi
           </fieldset>
         ))}
         {summary && <Summary control={control} compute={summary} />}
+        <ComputedFields fields={fields} control={control} setValue={setValue} />
       </div>
 
       <div className="sticky bottom-0 flex flex-col gap-3 border-t border-line bg-surface px-6 py-4 sm:flex-row sm:items-center sm:justify-between sm:rounded-b-2xl">
@@ -306,6 +321,57 @@ function Summary({ control, compute }: { control: Control<Row>; compute: NonNull
         </div>
       ))}
     </div>
+  );
+}
+
+/** Keeps read-only computed fields (e.g. amount later = total - amount now) up to date while typing. */
+function ComputedFields({ fields, control, setValue }: { fields: Field[]; control: Control<Row>; setValue: (name: string, value: unknown, opts?: object) => void }) {
+  const values = useWatch({ control });
+  const computed = fields.filter((f) => f.computed);
+  useEffect(() => {
+    for (const f of computed) {
+      const next = f.computed!(values);
+      if (String(next ?? "") !== String(values[f.name] ?? "")) setValue(f.name, next, { shouldValidate: true });
+    }
+  });
+  return null;
+}
+
+/** Pick several options at once (chips). Options can depend on another field, e.g. sub categories of the chosen main category. */
+function MultiChoice({ field: f, control }: { field: Field; control: Control<Row> }) {
+  const parent = useWatch({ control, name: f.dependsOn?.field || "__none__" });
+  const options = f.dependsOn ? f.dependsOn.map[parent as string] || [] : f.options || [];
+  return (
+    <Controller
+      name={f.name}
+      control={control}
+      render={({ field }) => {
+        const selected: string[] = (field.value || []).filter((v: string) => options.includes(v));
+        if (f.dependsOn && !parent) return <p className="py-2 text-[13px] text-muted">Choose {f.dependsOn.field.replace(/_/g, " ")} first.</p>;
+        if (!options.length) return <p className="py-2 text-[13px] text-muted">No sub categories for this option.</p>;
+        return (
+          <div className="flex flex-wrap gap-2">
+            {options.map((opt) => {
+              const on = selected.includes(opt);
+              return (
+                <button
+                  key={opt}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => field.onChange(on ? selected.filter((s) => s !== opt) : [...selected, opt])}
+                  className={cn(
+                    "rounded-lg border px-3 py-1.5 text-[13px] font-medium transition",
+                    on ? "border-brand bg-brand/10 text-brand-text" : "border-line text-muted hover:border-fg/25 hover:text-fg"
+                  )}
+                >
+                  {opt}
+                </button>
+              );
+            })}
+          </div>
+        );
+      }}
+    />
   );
 }
 

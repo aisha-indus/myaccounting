@@ -19,6 +19,12 @@ import { isoDate, money } from "@/lib/format";
 
 type TxType = "money_in" | "money_out";
 const partyLabel = (r: Row) => (r.business_name ? `${r.business_name} (${r.contact_name})` : r.contact_name);
+/** Pending part: total minus what is paid now. Without a total, nothing is left for later. */
+const laterOf = (v: Row) => {
+  const total = Number(v.total_amount);
+  if (!v.total_amount && v.total_amount !== 0) return 0;
+  return Math.round((total - (Number(v.amount_now) || 0)) * 100) / 100;
+};
 const accountLabel = (a: Row) => `${a.account_code} - ${a.name} (${a.account_type})`;
 
 // AC-04-01 / AC-04-02. AC-04-06: Money In posts to an Asset or Income account, Money Out to Expense or Liability.
@@ -39,8 +45,16 @@ const FORMS: Record<TxType, { title: string; description: string; fields: Field[
         relation: { resource: "ledger-accounts", label: accountLabel, filter: (a) => ["Asset", "Income"].includes(a.account_type) },
         help: "Income for a new sale. Choose Accounts Receivable when the customer is paying an amount they already owe.",
       },
+      {
+        name: "total_amount",
+        label: "Total amount",
+        type: "money",
+        virtual: true,
+        initial: (r) => (Number(r.amount_now) || 0) + (Number(r.amount_later) || 0),
+        help: "The full bill. Leave empty if it is all received now.",
+      },
       { name: "amount_now", label: "Amount to come in now", type: "money" },
-      { name: "amount_later", label: "Amount to come later", type: "money", help: "Stays as receivable from the customer." },
+      { name: "amount_later", label: "Amount to come later", type: "money", computed: laterOf, minMessage: "The amount now is more than the total.", help: "Worked out for you. Stays as receivable from the customer." },
     ],
   },
   money_out: {
@@ -59,8 +73,16 @@ const FORMS: Record<TxType, { title: string; description: string; fields: Field[
         relation: { resource: "ledger-accounts", label: accountLabel, filter: (a) => ["Expense", "Liability"].includes(a.account_type) },
         help: "Expense for a new bill. Choose Accounts Payable when you are paying an amount you already owe the vendor.",
       },
+      {
+        name: "total_amount",
+        label: "Total amount",
+        type: "money",
+        virtual: true,
+        initial: (r) => (Number(r.amount_now) || 0) + (Number(r.amount_later) || 0),
+        help: "The full bill. Leave empty if it is all paid now.",
+      },
       { name: "amount_now", label: "Amount going now", type: "money" },
-      { name: "amount_later", label: "Amount to go later", type: "money", help: "Stays as payable to the vendor." },
+      { name: "amount_later", label: "Amount to go later", type: "money", computed: laterOf, minMessage: "The amount now is more than the total.", help: "Worked out for you. Stays as payable to the vendor." },
     ],
   },
 };
